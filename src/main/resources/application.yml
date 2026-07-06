@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: task-manager
+  profiles:
+    active: development
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
