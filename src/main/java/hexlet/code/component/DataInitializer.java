@@ -1,7 +1,9 @@
 package hexlet.code.component;
 
+import hexlet.code.model.Label;
 import hexlet.code.model.TaskStatus;
 import hexlet.code.model.User;
+import hexlet.code.repository.LabelRepository;
 import hexlet.code.repository.TaskStatusRepository;
 import hexlet.code.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +12,7 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Map;
 
 @Component
@@ -26,8 +29,11 @@ public class DataInitializer implements ApplicationRunner {
             "published", "Published"
     );
 
+    private static final List<String> DEFAULT_LABELS = List.of("feature", "bug");
+
     private final UserRepository userRepository;
     private final TaskStatusRepository taskStatusRepository;
+    private final LabelRepository labelRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -45,6 +51,14 @@ public class DataInitializer implements ApplicationRunner {
                 taskStatus.setName(name);
                 taskStatus.setSlug(slug);
                 taskStatusRepository.save(taskStatus);
+            }
+        });
+
+        DEFAULT_LABELS.forEach(name -> {
+            if (labelRepository.findByName(name).isEmpty()) {
+                var label = new Label();
+                label.setName(name);
+                labelRepository.save(label);
             }
         });
     }

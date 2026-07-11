@@ -1,8 +1,10 @@
 package hexlet.code.controller;
 
+import hexlet.code.model.Label;
 import hexlet.code.model.Task;
 import hexlet.code.model.TaskStatus;
 import hexlet.code.model.User;
+import hexlet.code.repository.LabelRepository;
 import hexlet.code.repository.TaskRepository;
 import hexlet.code.repository.TaskStatusRepository;
 import hexlet.code.repository.UserRepository;
@@ -15,7 +17,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -47,16 +52,22 @@ class TaskControllerTest {
     private UserRepository userRepository;
 
     @Autowired
+    private LabelRepository labelRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     private User testUser;
     private TaskStatus draftStatus;
     private TaskStatus reviewStatus;
+    private Label bugLabel;
+    private Label featureLabel;
     private Task testTask;
 
     @BeforeEach
     void setUp() {
         taskRepository.deleteAll();
+        labelRepository.deleteAll();
         taskStatusRepository.deleteAll();
         userRepository.deleteAll();
 
@@ -75,12 +86,21 @@ class TaskControllerTest {
         reviewStatus.setSlug("to_review");
         taskStatusRepository.save(reviewStatus);
 
+        bugLabel = new Label();
+        bugLabel.setName("bug");
+        labelRepository.save(bugLabel);
+
+        featureLabel = new Label();
+        featureLabel.setName("feature");
+        labelRepository.save(featureLabel);
+
         testTask = new Task();
         testTask.setName("Task 1");
         testTask.setIndex(3140);
         testTask.setDescription("Description of task 1");
         testTask.setTaskStatus(draftStatus);
         testTask.setAssignee(testUser);
+        testTask.setLabels(new HashSet<>(Set.of(bugLabel)));
         taskRepository.save(testTask);
     }
 
@@ -103,6 +123,8 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.content").value("Description of task 1"))
                 .andExpect(jsonPath("$.status").value("draft"))
                 .andExpect(jsonPath("$.assignee_id").value(testUser.getId().intValue()))
+                .andExpect(jsonPath("$.taskLabelIds.length()").value(1))
+                .andExpect(jsonPath("$.taskLabelIds[0]").value(bugLabel.getId().intValue()))
                 .andExpect(jsonPath("$.createdAt").exists());
     }
 
@@ -119,7 +141,8 @@ class TaskControllerTest {
                 "assignee_id", testUser.getId(),
                 "title", "Test title",
                 "content", "Test content",
-                "status", "draft"
+                "status", "draft",
+                "taskLabelIds", List.of(bugLabel.getId(), featureLabel.getId())
         );
 
         mockMvc.perform(post("/api/tasks")
@@ -133,6 +156,7 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.content").value("Test content"))
                 .andExpect(jsonPath("$.status").value("draft"))
                 .andExpect(jsonPath("$.assignee_id").value(testUser.getId().intValue()))
+                .andExpect(jsonPath("$.taskLabelIds.length()").value(2))
                 .andExpect(jsonPath("$.createdAt").exists());
 
         var task = taskRepository.findAll().stream()
@@ -142,6 +166,7 @@ class TaskControllerTest {
         assertThat(task.getDescription()).isEqualTo("Test content");
         assertThat(task.getTaskStatus().getSlug()).isEqualTo("draft");
         assertThat(task.getAssignee().getId()).isEqualTo(testUser.getId());
+        assertThat(task.getLabels()).containsExactlyInAnyOrder(bugLabel, featureLabel);
     }
 
     @Test
@@ -227,6 +252,35 @@ class TaskControllerTest {
 
         var task = taskRepository.findById(testTask.getId()).orElseThrow();
         assertThat(task.getTaskStatus().getSlug()).isEqualTo("to_review");
+    }
+
+    @Test
+    void testUpdateLabels() throws Exception {
+        var data = Map.of("taskLabelIds", List.of(featureLabel.getId()));
+
+        mockMvc.perform(put("/api/tasks/" + testTask.getId())
+                        .with(jwt())
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(data)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.taskLabelIds.length()").value(1))
+                .andExpect(jsonPath("$.taskLabelIds[0]").value(featureLabel.getId().intValue()))
+                // untouched fields stay the same
+                .andExpect(jsonPath("$.title").value("Task 1"));
+
+        var task = taskRepository.findById(testTask.getId()).orElseThrow();
+        assertThat(task.getLabels()).containsExactly(featureLabel);
+    }
+
+    @Test
+    void testUpdateWithUnknownLabel() throws Exception {
+        var data = Map.of("taskLabelIds", List.of(99999L));
+
+        mockMvc.perform(put("/api/tasks/" + testTask.getId())
+                        .with(jwt())
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(data)))
+                .andExpect(status().isNotFound());
     }
 
     @Test

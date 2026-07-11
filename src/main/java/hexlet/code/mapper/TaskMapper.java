@@ -4,9 +4,11 @@ import hexlet.code.dto.TaskCreateDTO;
 import hexlet.code.dto.TaskDTO;
 import hexlet.code.dto.TaskUpdateDTO;
 import hexlet.code.exception.ResourceNotFoundException;
+import hexlet.code.model.Label;
 import hexlet.code.model.Task;
 import hexlet.code.model.TaskStatus;
 import hexlet.code.model.User;
+import hexlet.code.repository.LabelRepository;
 import hexlet.code.repository.TaskStatusRepository;
 import hexlet.code.repository.UserRepository;
 import org.mapstruct.Mapper;
@@ -30,22 +32,28 @@ public abstract class TaskMapper {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private LabelRepository labelRepository;
+
     @Mapping(target = "name", source = "title")
     @Mapping(target = "description", source = "content")
     @Mapping(target = "taskStatus", source = "status")
     @Mapping(target = "assignee", source = "assigneeId")
+    @Mapping(target = "labels", source = "taskLabelIds")
     public abstract Task map(TaskCreateDTO dto);
 
     @Mapping(target = "title", source = "name")
     @Mapping(target = "content", source = "description")
     @Mapping(target = "status", source = "taskStatus.slug")
     @Mapping(target = "assigneeId", source = "assignee.id")
+    @Mapping(target = "taskLabelIds", source = "labels")
     public abstract TaskDTO map(Task model);
 
     @Mapping(target = "name", source = "title")
     @Mapping(target = "description", source = "content")
     @Mapping(target = "taskStatus", source = "status")
     @Mapping(target = "assignee", source = "assigneeId")
+    @Mapping(target = "labels", source = "taskLabelIds")
     public abstract void update(TaskUpdateDTO dto, @MappingTarget Task model);
 
     protected TaskStatus toTaskStatus(String slug) {
@@ -62,5 +70,17 @@ public abstract class TaskMapper {
         }
         return userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User with id " + id + " not found"));
+    }
+
+    protected Label toLabel(Long id) {
+        if (id == null) {
+            return null;
+        }
+        return labelRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Label with id " + id + " not found"));
+    }
+
+    protected Long toLabelId(Label label) {
+        return label == null ? null : label.getId();
     }
 }

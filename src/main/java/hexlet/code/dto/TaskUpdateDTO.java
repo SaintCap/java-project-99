@@ -5,6 +5,8 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.Set;
+
 /**
  * Partial update: null means "field was not sent, keep the current value".
  * Constraints are ignored for null values, so only provided fields are validated.
@@ -25,4 +27,6 @@ public class TaskUpdateDTO {
 
     @Size(min = 1)
     private String status;
+
+    private Set<Long> taskLabelIds;
 }
