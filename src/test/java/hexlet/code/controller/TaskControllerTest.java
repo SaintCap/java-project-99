@@ -104,6 +104,15 @@ class TaskControllerTest {
         taskRepository.save(testTask);
     }
 
+    private Task createSecondTask() {
+        var task = new Task();
+        task.setName("Second job");
+        task.setTaskStatus(reviewStatus);
+        task.setLabels(new HashSet<>(Set.of(featureLabel)));
+        taskRepository.save(task);
+        return task;
+    }
+
     @Test
     void testIndex() throws Exception {
         mockMvc.perform(get("/api/tasks").with(jwt()))
@@ -111,6 +120,80 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].title").value("Task 1"))
                 .andExpect(jsonPath("$[0].status").value("draft"));
+    }
+
+    @Test
+    void testIndexWithTitleContFilter() throws Exception {
+        createSecondTask();
+
+        mockMvc.perform(get("/api/tasks?titleCont=second").with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].title").value("Second job"));
+    }
+
+    @Test
+    void testIndexWithAssigneeIdFilter() throws Exception {
+        createSecondTask();
+
+        mockMvc.perform(get("/api/tasks?assigneeId=" + testUser.getId()).with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].title").value("Task 1"))
+                .andExpect(jsonPath("$[0].assignee_id").value(testUser.getId().intValue()));
+    }
+
+    @Test
+    void testIndexWithStatusFilter() throws Exception {
+        createSecondTask();
+
+        mockMvc.perform(get("/api/tasks?status=to_review").with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].title").value("Second job"))
+                .andExpect(jsonPath("$[0].status").value("to_review"));
+    }
+
+    @Test
+    void testIndexWithLabelIdFilter() throws Exception {
+        createSecondTask();
+
+        mockMvc.perform(get("/api/tasks?labelId=" + bugLabel.getId()).with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].title").value("Task 1"));
+    }
+
+    @Test
+    void testIndexWithAllFilters() throws Exception {
+        createSecondTask();
+
+        var url = "/api/tasks?titleCont=task&assigneeId=" + testUser.getId()
+                + "&status=draft&labelId=" + bugLabel.getId();
+
+        mockMvc.perform(get(url).with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(testTask.getId().intValue()))
+                .andExpect(jsonPath("$[0].title").value("Task 1"));
+    }
+
+    @Test
+    void testIndexWithFiltersMatchingNothing() throws Exception {
+        createSecondTask();
+
+        mockMvc.perform(get("/api/tasks?titleCont=second&status=draft").with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void testIndexWithoutFiltersReturnsAll() throws Exception {
+        createSecondTask();
+
+        mockMvc.perform(get("/api/tasks").with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2));
     }
 
     @Test
