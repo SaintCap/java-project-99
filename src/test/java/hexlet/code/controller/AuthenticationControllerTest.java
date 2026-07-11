@@ -1,6 +1,7 @@
 package hexlet.code.controller;
 
 import hexlet.code.model.User;
+import hexlet.code.repository.TaskRepository;
 import hexlet.code.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,10 +33,15 @@ class AuthenticationControllerTest {
     private UserRepository userRepository;
 
     @Autowired
+    private TaskRepository taskRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void setUp() {
+        // tasks may reference users via a foreign key, clean them up first
+        taskRepository.deleteAll();
         userRepository.deleteAll();
 
         var user = new User();

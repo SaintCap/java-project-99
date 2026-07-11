@@ -3,6 +3,7 @@ package hexlet.code.controller;
 import hexlet.code.component.DataInitializer;
 import hexlet.code.dto.TaskStatusCreateDTO;
 import hexlet.code.model.TaskStatus;
+import hexlet.code.repository.TaskRepository;
 import hexlet.code.repository.TaskStatusRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,12 +40,17 @@ class TaskStatusControllerTest {
     private TaskStatusRepository taskStatusRepository;
 
     @Autowired
+    private TaskRepository taskRepository;
+
+    @Autowired
     private DataInitializer dataInitializer;
 
     private TaskStatus testStatus;
 
     @BeforeEach
     void setUp() {
+        // tasks reference statuses via a foreign key, clean them up first
+        taskRepository.deleteAll();
         taskStatusRepository.deleteAll();
 
         testStatus = new TaskStatus();

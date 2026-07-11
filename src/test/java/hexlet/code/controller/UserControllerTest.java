@@ -3,6 +3,7 @@ package hexlet.code.controller;
 import hexlet.code.dto.UserCreateDTO;
 import hexlet.code.dto.UserUpdateDTO;
 import hexlet.code.model.User;
+import hexlet.code.repository.TaskRepository;
 import hexlet.code.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -38,12 +40,17 @@ class UserControllerTest {
     private UserRepository userRepository;
 
     @Autowired
+    private TaskRepository taskRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     private User testUser;
 
     @BeforeEach
     void setUp() {
+        // tasks may reference users via a foreign key, clean them up first
+        taskRepository.deleteAll();
         userRepository.deleteAll();
 
         testUser = new User();
@@ -56,7 +63,7 @@ class UserControllerTest {
 
     @Test
     void testIndex() throws Exception {
-        mockMvc.perform(get("/api/users"))
+        mockMvc.perform(get("/api/users").with(jwt()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].email").value("john@google.com"))
@@ -65,7 +72,7 @@ class UserControllerTest {
 
     @Test
     void testShow() throws Exception {
-        mockMvc.perform(get("/api/users/" + testUser.getId()))
+        mockMvc.perform(get("/api/users/" + testUser.getId()).with(jwt()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(testUser.getId().intValue()))
                 .andExpect(jsonPath("$.email").value("john@google.com"))
@@ -77,7 +84,7 @@ class UserControllerTest {
 
     @Test
     void testShowNotFound() throws Exception {
-        mockMvc.perform(get("/api/users/99999"))
+        mockMvc.perform(get("/api/users/99999").with(jwt()))
                 .andExpect(status().isNotFound());
     }
 
@@ -90,6 +97,7 @@ class UserControllerTest {
         data.setPassword("some-password");
 
         mockMvc.perform(post("/api/users")
+                        .with(jwt())
                         .contentType(APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(data)))
                 .andExpect(status().isCreated())
@@ -109,6 +117,7 @@ class UserControllerTest {
         var data = Map.of("email", "not-an-email", "password", "some-password");
 
         mockMvc.perform(post("/api/users")
+                        .with(jwt())
                         .contentType(APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(data)))
                 .andExpect(status().isBadRequest());
@@ -119,6 +128,7 @@ class UserControllerTest {
         var data = Map.of("email", "jack@google.com", "password", "ab");
 
         mockMvc.perform(post("/api/users")
+                        .with(jwt())
                         .contentType(APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(data)))
                 .andExpect(status().isBadRequest());
@@ -131,6 +141,7 @@ class UserControllerTest {
         data.setPassword("new-password");
 
         mockMvc.perform(put("/api/users/" + testUser.getId())
+                        .with(jwt().jwt(token -> token.subject(testUser.getEmail())))
                         .contentType(APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(data)))
                 .andExpect(status().isOk())
@@ -150,6 +161,7 @@ class UserControllerTest {
         var data = Map.of("firstName", "Jane");
 
         mockMvc.perform(put("/api/users/" + testUser.getId())
+                        .with(jwt().jwt(token -> token.subject(testUser.getEmail())))
                         .contentType(APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(data)))
                 .andExpect(status().isOk())
@@ -167,6 +179,7 @@ class UserControllerTest {
         var data = Map.of("email", "not-an-email");
 
         mockMvc.perform(put("/api/users/" + testUser.getId())
+                        .with(jwt().jwt(token -> token.subject(testUser.getEmail())))
                         .contentType(APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(data)))
                 .andExpect(status().isBadRequest());
@@ -174,7 +187,8 @@ class UserControllerTest {
 
     @Test
     void testDelete() throws Exception {
-        mockMvc.perform(delete("/api/users/" + testUser.getId()))
+        mockMvc.perform(delete("/api/users/" + testUser.getId())
+                        .with(jwt().jwt(token -> token.subject(testUser.getEmail()))))
                 .andExpect(status().isNoContent());
 
         assertThat(userRepository.existsById(testUser.getId())).isFalse();
