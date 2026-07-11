@@ -17,6 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -222,7 +223,7 @@ class LabelControllerTest {
         // after setUp() cleaned the table to check the defaults it creates
         dataInitializer.run(null);
 
-        for (var name : new String[] {"feature", "bug"}) {
+        for (var name : List.of("feature", "bug")) {
             assertThat(labelRepository.findByName(name)).isPresent();
         }
     }

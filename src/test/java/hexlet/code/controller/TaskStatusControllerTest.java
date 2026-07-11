@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -231,7 +232,7 @@ class TaskStatusControllerTest {
         // after setUp() cleaned the table to check the defaults it creates
         dataInitializer.run(null);
 
-        for (var slug : new String[] {"draft", "to_review", "to_be_fixed", "to_publish", "published"}) {
+        for (var slug : List.of("draft", "to_review", "to_be_fixed", "to_publish", "published")) {
             assertThat(taskStatusRepository.findBySlug(slug)).isPresent();
         }
     }

@@ -1,6 +1,7 @@
 
 plugins {
     java
+    checkstyle
     id("org.springframework.boot") version "4.1.1-SNAPSHOT"
     id("io.spring.dependency-management") version "1.1.7"
 }
@@ -44,5 +45,9 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+checkstyle {
+    toolVersion = "10.26.1"
 }
 
